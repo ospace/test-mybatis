@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tistory.ospace.test.repository.PostRepository">
+	<select id="findAll" resultType="com.tistory.ospace.test.entity.Post">
+        SELECT * FROM post
+    </select>
+    
+    <select id="findById" resultType="com.tistory.ospace.test.entity.Post">
+        SELECT * FROM post WHERE id = #{id}
+    </select>
+    
+    <insert id="create">
+        INSERT INTO user (
+            title,
+            content
+        ) VALUES (
+            #{title},
+            #{content}
+        )
+        <selectKey keyProperty="id" resultType="java.lang.Integer" order="AFTER" >
+            CALL SCOPE_IDENTITY()
+        </selectKey>
+    </insert>
+    
+	<update id="update">
+	    UPDATE post
+        SET
+            <if test="null != title">
+                title = #{title},
+            </if>
+            <if test="null != content">
+                content = #{content},
+            </if>
+            modify_at = SYSDATE()
+        WHERE id = #{id}
+	</update>
+	
+	<delete id="delete">
+	   DELETE FROM post WHERE id = #{id}
+	</delete>
+</mapper>
