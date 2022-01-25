@@ -6,8 +6,6 @@ import java.lang.reflect.Method;
 import javax.annotation.PostConstruct;
 
 import org.aopalliance.aop.Advice;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.aop.ClassFilter;
 import org.springframework.aop.IntroductionAdvisor;
 import org.springframework.aop.MethodMatcher;
@@ -16,13 +14,9 @@ import org.springframework.aop.support.AbstractPointcutAdvisor;
 import org.springframework.aop.support.ComposablePointcut;
 import org.springframework.aop.support.annotation.AnnotationClassFilter;
 import org.springframework.aop.support.annotation.AnnotationMethodMatcher;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.AnnotationUtils;
 
-@Configuration
-public class TimeLogConfiguration extends AbstractPointcutAdvisor implements IntroductionAdvisor/*, BeanFactoryAware*/ {
-	private static final Logger LOGGER = LoggerFactory.getLogger(TimeLogConfiguration.class);
-	
+public class TimeLogConfiguration extends AbstractPointcutAdvisor implements IntroductionAdvisor {
 	private static final long serialVersionUID = -4528767584639351076L;
 	private Advice      advice;
 	private Pointcut    pointcut;
@@ -30,32 +24,37 @@ public class TimeLogConfiguration extends AbstractPointcutAdvisor implements Int
 	class AnnotationPointcut implements Pointcut {
 		private final MethodMatcher methodMatcher;
 		private final ClassFilter   classFilter;
+		private Class<? extends Annotation> annotationClazz = null;
 		
 		public AnnotationPointcut(Class<? extends Annotation> annotationClazz) {
-			this.methodMatcher = new AnnotationMethodMatcher(annotationClazz);
+			this.annotationClazz = annotationClazz;
+			this.methodMatcher = new AnnotationMethodMatcher(annotationClazz) {
+			    @Override
+		    	public boolean matches(Method method, Class<?> targetClass) {
+			    	return hasAnnotation(targetClass) || super.matches(method, targetClass);
+			    }
+			};
 			this.classFilter = new AnnotationClassFilter(annotationClazz, true) {
 				@Override
 				public boolean matches(Class<?> clazz) {
-					return super.matches(clazz) || hasAnnotationMethod(clazz, annotationClazz);
-				}
-				
-				private boolean hasAnnotationMethod(Class<?> clazz, Class<? extends Annotation> annotaion) {
-					try {
-						boolean found = false;
-						for(Method it : clazz.getMethods()) {
-							Annotation annotation = AnnotationUtils.findAnnotation(it, annotaion);
-							if(null != annotation) {
-								found = true;
-								break;
-							}
-						}
-						return found;
-					} catch(Exception e) {
-						LOGGER.warn("AnnotationClassFilter.exception : {}", e.getMessage(), e);
-						throw e;
-					}
+					return super.matches(clazz) || hasAnnotationMethod(clazz);
 				}
 			};
+		}
+		
+		boolean hasAnnotation(Method method) {
+			return null != AnnotationUtils.findAnnotation(method, this.annotationClazz);
+		}
+		
+		boolean hasAnnotation(Class<?> clazz) {
+			return null != AnnotationUtils.findAnnotation(clazz, this.annotationClazz);
+		}
+		
+		boolean hasAnnotationMethod(Class<?> clazz) {
+			for(Method it  : clazz.getMethods()) {
+				if (hasAnnotation(it)) return true;
+			}
+			return false;
 		}
 
 
@@ -72,56 +71,37 @@ public class TimeLogConfiguration extends AbstractPointcutAdvisor implements Int
 	
 	@PostConstruct
 	private void init() {
-		LOGGER.info("@PostConstruct");
-		 
-//		Pointcut pointcut1 = new AnnotationClassOrMethodPointcut();
 		Pointcut pointcut1 = new AnnotationPointcut(TimeLog.class);
 		ComposablePointcut compPointcut = new ComposablePointcut(pointcut1);
-//		compPointcut.union(pointcut1);
 		this.pointcut = compPointcut;
 		
 		TimeLogInterceptor interceptor = new TimeLogInterceptor();
-//		interceptor.setBeanFactory(beanFactory);
 		
 		this.advice = interceptor;
 	}
 	
 	@Override
 	public Advice getAdvice() {
-//		LOGGER.info("getAdvice");
 		return this.advice;
 	}
 
 	@Override
 	public Class<?>[] getInterfaces() {
-//		LOGGER.info("getInterfaces");
-		// TODO Auto-generated method stub
-//		return new Class[] {TimeLog.class};
 		return new Class[] {};
 	}
 
 	@Override
 	public Pointcut getPointcut() {
-//		LOGGER.info("getPointcut");
 		return this.pointcut;
 	}
 
-//	@Override
-//	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-//		LOGGER.info("setBeanFactory : {}", beanFactory);
-//		this.beanFactory = beanFactory;
-//		
-//	}
-
 	@Override
 	public ClassFilter getClassFilter() {
-//		LOGGER.info("getClassFilter");
 		return pointcut.getClassFilter();
 	}
 
 	@Override
 	public void validateInterfaces() throws IllegalArgumentException {
-//		LOGGER.info("validateInterfaces");
 	}
 
 }

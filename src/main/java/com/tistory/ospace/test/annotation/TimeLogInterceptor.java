@@ -1,5 +1,8 @@
 package com.tistory.ospace.test.annotation;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.aopalliance.intercept.MethodInvocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,20 +10,24 @@ import org.springframework.aop.IntroductionInterceptor;
 
 public class TimeLogInterceptor implements IntroductionInterceptor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TimeLogInterceptor.class);
+	private static final Pattern RE_CLASS = Pattern.compile(".+\\.([a-zA-Z]+\\.[a-zA-Z]+)\\(\\S*\\)");
 	
 	@Override
 	public Object invoke(MethodInvocation invocation) throws Throwable {
+		LOGGER.info("invoke: {}", invocation);
 		String args = "";
 		for(Object arg : invocation.getArguments()) {
 			if(!args.isEmpty()) args = args.concat(",");
 			args = args.concat(null == arg ? "null" : arg.toString());
 		}
 		
-		String objName[] = invocation.getStaticPart().toString().split(" ");
-		int idx = objName[2].lastIndexOf('.');
-		idx = objName[2].lastIndexOf('.', idx-1);
-		String className = objName[2].substring(idx+1);
-		LOGGER.info("BEGIN {}: arguments[{}]", className, args);
+		String className = invocation.getStaticPart().toString();
+		Matcher matcher = RE_CLASS.matcher(className);
+		if (matcher.matches()) {
+			className = matcher.group(1) + "()";
+		}
+		
+		LOGGER.info("BEGIN {}: arguments[{}]", className, invocation.getArguments());
 		
 		long begin = System.currentTimeMillis();
 		Object ret = invocation.proceed();
